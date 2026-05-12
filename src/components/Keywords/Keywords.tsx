@@ -43,6 +43,7 @@ const keywordAbilitiesOptions = [
   "Ward (6+)",
   "War Machine",
   "Warmaster",
+  "Wizard",
   "Wizard (1)",
   "Wizard (2)",
   "Wizard (3)",

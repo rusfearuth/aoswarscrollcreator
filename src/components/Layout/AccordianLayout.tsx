@@ -13,6 +13,9 @@ import RangedWeapons from "../Weapons/RangedWeapons";
 import Abilities from "../Abilities/Abilities";
 import Loadout from "../Loadouts/Loadouts";
 import Legal from "./Legal";
+import ModelImageControls from "../ModelImage/ModelImageControls";
+import Customization from "../Customization/Customization";
+import TuneIcon from "@mui/icons-material/Tune";
 const theme = createTheme({
   typography: {
     fontFamily: "Minion Pro, Arial, sans-serif",
@@ -43,6 +46,17 @@ export default function AccordianLayout() {
           </ThemeProvider>
         </AccordionSummary>
         <GrandAlliances />
+      </Accordion>
+      {/*Unit Image*/}
+      <Accordion sx={{ maxWidth: accordianWidth }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="panel3-content" id="panel3-header">
+          <ThemeProvider theme={theme}>
+            <Typography variant="h6" component="div" fontFamily={"Minion Pro"}>
+              {"Unit Image"}
+            </Typography>
+          </ThemeProvider>
+        </AccordionSummary>
+        <ModelImageControls />
       </Accordion>
       {/*Characteristics*/}
       <Accordion sx={{ maxWidth: accordianWidth }}>
@@ -109,6 +123,18 @@ export default function AccordianLayout() {
           </ThemeProvider>
         </AccordionSummary>
         <Keywords />
+      </Accordion>
+      {/*Customization*/}
+      <Accordion sx={{ maxWidth: accordianWidth }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="panel-customization-content" id="panel-customization-header">
+          <TuneIcon sx={{ mr: 1 }} />
+          <ThemeProvider theme={theme}>
+            <Typography variant="h6" component="div" fontFamily={"Minion Pro"}>
+              {"Customization"}
+            </Typography>
+          </ThemeProvider>
+        </AccordionSummary>
+        <Customization />
       </Accordion>
       <Legal />
     </Box>

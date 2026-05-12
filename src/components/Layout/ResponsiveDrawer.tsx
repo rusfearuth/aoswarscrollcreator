@@ -21,6 +21,7 @@ import { initDownload } from "../WarscrollCard/WarscrollCardSlice";
 import { useDispatch } from "react-redux";
 import ResetWarscroll from "../HandleData/ResetWarscroll";
 import { Dialog, DialogActions, DialogContent, DialogContentText, Button } from "@mui/material";
+import SavedCardsPanel from "../SavedCards/SavedCardsPanel";
 
 const drawerWidth = 240;
 
@@ -123,6 +124,21 @@ export default function ResponsiveDrawer() {
         accept=".json"
         onChange={handleFileChange}
       />
+      <Divider />
+
+      {/* Saved Warscrolls library */}
+      <Typography
+        variant="overline"
+        sx={{
+          px: 2,
+          pt: 1,
+          display: "block",
+          fontSize: { xs: "0.75rem", sm: "0.85rem" },
+        }}
+      >
+        My Warscrolls
+      </Typography>
+      <SavedCardsPanel />
       <Divider />
 
       {/* Bottom section of list */}
