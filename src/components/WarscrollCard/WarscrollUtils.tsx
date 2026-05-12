@@ -2,26 +2,22 @@ import { RangedWeaponOverrideStats, RangedWeaponStats } from "../Weapons/RangedW
 import { MeleeWeaponOverrideStats, MeleeWeaponStats } from "../Weapons/MeleeWeapons";
 import { Ability } from "../Abilities/Abilities";
 import { Coordinate } from "./WarscrollCard";
-import { AbilityIconPath, AbilityTypeIcon, defaultAbilityIconWidthHeight } from "../Abilities/AbilitiesInfo";
+import { AbilityIconPath, AbilityTypeIcon } from "../Abilities/AbilitiesInfo";
+import { drawInlineTokens, tokenizeMarkdown } from "./MarkdownText";
+import { CustomizationState } from "../Customization/CustomizationSlice";
 
 // Character limits and offeets
 const weaponCharPerLine = 27;
-const abilityIconOffset = 17;
 
 // Font sizes
-const wpnBannerFontSize = 13;
-const wpnFont = 14;
 const factionTitleFontSize = 12;
 const warscrollNameFontSize = 28;
-const abilitiesFont = 12;
+const abilitiesKeywordsFont = 12;
 const abilityTypeFontSize = 16;
 
 // Banner positions
 const wpnBannerPosX = 10;
 const wpnBannerPosY = 200;
-const wpnHeaderYPos = 215;
-const textPosY = 230;
-const defaultYPos = 242;
 
 // Weapon Text Draw positions
 const rng = 240;
@@ -106,120 +102,55 @@ export const drawLoadoutOnCanvas = (
   loadoutBody: string,
   loadoutPoints: string[],
   yAnchor: number,
-  maxWidth: number
+  maxWidth: number,
+  customization: CustomizationState
 ) => {
-  let xOffset = xAnchorL;
-  let yOffset = yAnchor + 20;
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = "black";
-  ctx.textAlign = "left";
-  ctx.font = "bold italic 14px Minion Pro";
+  const lineHeight = customization.lineHeights.loadout;
+  const fontSize = customization.fontSizes.loadout;
   const doubleLineXOffset = 12;
+  const availableWidth = maxWidth - xAnchorL;
+  let yOffset = yAnchor + 20;
+
+  ctx.globalAlpha = 1;
+  ctx.textAlign = "left";
+
   if (loadoutBody.length > 0) {
-    const lines = loadoutBody.split(" ");
-
-    lines.forEach((word) => {
-      const wordWidth = ctx.measureText(word).width;
-      if (wordWidth + xOffset > maxWidth) {
-        yOffset += 15;
-        xOffset = xAnchorL;
-      }
-
-      ctx.fillText(word, xOffset, yOffset);
-      xOffset += wordWidth + ctx.measureText(" ").width;
+    const result = drawInlineTokens({
+      ctx,
+      tokens: tokenizeMarkdown(loadoutBody, "bold-italic"),
+      x: xAnchorL,
+      y: yOffset,
+      maxWidth: availableWidth,
+      lineHeight,
+      fontSize,
+      fontColor: "black",
+      draw: true,
     });
+    yOffset += (result.lineCount - 1) * lineHeight;
   }
 
-  // Draw the loadout points.
   if (loadoutPoints.length > 0) {
-    yOffset += 5; // Adds a little margin between the body and points.
+    yOffset += 5;
     for (let i = 0; i < loadoutPoints.length; i++) {
-      xOffset = xAnchorL;
-      yOffset += 15;
-      const lines = loadoutPoints[i].split(" ");
-      lines.forEach((word, index) => {
-        if (index === 0) {
-          word = "•  " + word;
-        }
-        const wordWidth = ctx.measureText(word).width;
-        if (wordWidth + xOffset > maxWidth) {
-          yOffset += 15;
-          xOffset = xAnchorL + doubleLineXOffset;
-        }
-        ctx.fillText(word, xOffset, yOffset);
-        xOffset += wordWidth + ctx.measureText(" ").width;
+      yOffset += lineHeight;
+      const result = drawInlineTokens({
+        ctx,
+        tokens: tokenizeMarkdown(loadoutPoints[i], "bold-italic"),
+        prefix: tokenizeMarkdown("•  ", "bold-italic"),
+        x: xAnchorL,
+        y: yOffset,
+        maxWidth: availableWidth,
+        lineHeight,
+        fontSize,
+        fontColor: "black",
+        draw: true,
+        wrapIndent: doubleLineXOffset,
       });
+      yOffset += (result.lineCount - 1) * lineHeight;
     }
   }
 
-  return yOffset - 120; // Return the updated yAnchor
-};
-
-const getTextHeight = (
-  ctx: CanvasRenderingContext2D,
-  stringToSplit: string,
-  width: number,
-  x: number,
-  y: number,
-  drawText: boolean,
-  unshift: string = "",
-  fontSize: number = 14,
-  alignment: CanvasTextAlign = "left",
-  fontColor: string = "black",
-  style: string = "" // Default to an empty string if no style is provided
-) => {
-  let xOffset = x;
-  let yOffset = y;
-  let heightOffset = 7;
-  width += x;
-
-  // Split the string into lines based on newline characters
-
-  const lines = stringToSplit.split("\n");
-  if (unshift) {
-    lines[0] = unshift + lines[0];
-  }
-
-  ctx.fillStyle = fontColor;
-  ctx.textAlign = alignment;
-
-  lines.forEach((line, lineIndex) => {
-    // Split each line into words
-    const words = line.split(" ");
-
-    words.forEach((word, wordIndex) => {
-      if (lineIndex === 0 && wordIndex + 1 < unshift.split(" ").length) {
-        ctx.font = "bold 14px Minion Pro";
-      } else {
-        ctx.font = `${style} ${fontSize}px "Minion Pro"`;
-        ctx.fillStyle = fontColor;
-        ctx.textAlign = alignment;
-        ctx.globalAlpha = 1;
-      }
-
-      const wordWidth = ctx.measureText(word).width;
-      // Check if the x position exceeds the maximum value
-      if (xOffset + wordWidth > width) {
-        // Move to the next line and reset x position
-        yOffset += fontSize;
-        xOffset = x;
-        heightOffset += fontSize;
-      }
-
-      if (drawText) {
-        ctx.fillText(word, xOffset, yOffset);
-      }
-
-      xOffset += wordWidth + ctx.measureText(" ").width;
-    });
-
-    // Move to the next line after processing each line
-    yOffset += fontSize;
-    xOffset = x;
-    heightOffset += fontSize;
-  });
-  console.log("Height offset: " + heightOffset);
-  return heightOffset;
+  return yOffset - 120;
 };
 
 export const drawAbilitiesOnCanvas = (
@@ -228,10 +159,16 @@ export const drawAbilitiesOnCanvas = (
   abilities: Ability[],
   coords: Coordinate[],
   isLoadout: boolean,
-  numOfLoadoutPoints: number
+  numOfLoadoutPoints: number,
+  customization: CustomizationState
 ) => {
   const xAnchorR = canvas.width / 2 + 10;
   const xAnchorL = 20;
+  const abilityFontSize = customization.fontSizes.abilities;
+  const abilityHeaderFontSize = customization.fontSizes.abilitiesHeader;
+  const abilityLineHeight = customization.lineHeights.abilities;
+  const abilityIconSize = customization.iconSizes.ability;
+  const abilityTypeIconSize = customization.iconSizes.abilityType;
 
   const boxWidth = canvas.width / 2 - 40;
   let loadoutOffset = 0; // Offset is used for if we have a loadout, we want to start 1 further in our array
@@ -272,8 +209,16 @@ export const drawAbilitiesOnCanvas = (
         const yCoord = coords[i]?.y;
         const abilityTitle = abilities[i].ability_restriction + abilities[i].ability_timing;
 
-        let bannerHeight = 20;
-        let tempAbilityIconOffset = abilityIconOffset;
+        const bannerTopPadding = 3;
+        const bannerBottomPadding = 3;
+        const bannerLineGap = 2;
+        const bannerSingleHeight = bannerTopPadding + abilityHeaderFontSize + bannerBottomPadding;
+        const bannerDoubleHeight = bannerSingleHeight + abilityHeaderFontSize + bannerLineGap;
+        const firstBaselineY = bannerTopPadding + Math.round(abilityHeaderFontSize * 0.85);
+        const secondBaselineY = firstBaselineY + abilityHeaderFontSize + bannerLineGap;
+
+        let bannerHeight = bannerSingleHeight;
+        let tempAbilityIconOffset = abilityIconSize;
         let boxHeight = 0;
         let isDoubleBanner = false;
 
@@ -281,15 +226,14 @@ export const drawAbilitiesOnCanvas = (
           const titleLines = abilityTitle.split(" ");
           const width = boxWidth + xCoord;
           let xOffset = xCoord;
-          let yTempOffset = 0;
 
-          ctx.font = "14px Minion Pro";
+          ctx.font = `${abilityHeaderFontSize}px Minion Pro`;
           ctx.fillStyle = "white";
           ctx.textAlign = "left";
           titleLines.forEach((word) => {
             const wordWidth = ctx.measureText(word).width;
             if (xOffset + wordWidth > width - tempAbilityIconOffset) {
-              bannerHeight += 16;
+              bannerHeight = bannerDoubleHeight;
               xOffset = xCoord;
               isDoubleBanner = true;
               tempAbilityIconOffset = 0;
@@ -299,20 +243,17 @@ export const drawAbilitiesOnCanvas = (
           ctx.drawImage(img, xCoord - 8, yCoord, boxWidth + 15, bannerHeight);
 
           xOffset = xCoord;
-          yTempOffset = -5;
-          tempAbilityIconOffset = abilityIconOffset;
+          tempAbilityIconOffset = abilityIconSize;
+          let currentLine = 0;
           titleLines.forEach((word) => {
             const wordWidth = ctx.measureText(word).width;
             if (xOffset + wordWidth > width - tempAbilityIconOffset) {
-              yTempOffset += 15;
+              currentLine = 1;
               xOffset = coords[i].x;
               tempAbilityIconOffset = 0;
             }
-            if (isDoubleBanner) {
-              ctx.fillText(word, xOffset + tempAbilityIconOffset, yCoord + 40 + yTempOffset - 17);
-            } else {
-              ctx.fillText(word, xOffset + tempAbilityIconOffset, yCoord + 15);
-            }
+            const baselineY = currentLine === 0 ? firstBaselineY : secondBaselineY;
+            ctx.fillText(word, xOffset + tempAbilityIconOffset, yCoord + baselineY);
             xOffset += wordWidth + ctx.measureText(" ").width;
           });
           yOffset += bannerHeight;
@@ -323,52 +264,56 @@ export const drawAbilitiesOnCanvas = (
           iconImg.src = iconPath;
 
           iconImg.onload = () => {
-            ctx.drawImage(iconImg, xCoord - 3, yCoord + 2, 17, 17);
+            const iconY = yCoord + Math.max(2, Math.round((bannerSingleHeight - abilityIconSize) / 2));
+            ctx.drawImage(iconImg, xCoord - 3, iconY, abilityIconSize, abilityIconSize);
           };
         }
 
         const nameDescCombined = abilities[i]?.name.toUpperCase() + abilities[i]?.name_desc;
         if (nameDescCombined.length > 0) {
-          console.log("Hellwofowfwe");
-          const offset = getTextHeight(
+          const result = drawInlineTokens({
             ctx,
-            abilities[i].name_desc,
-            boxWidth,
-            xCoord + 2,
-            yCoord + yOffset,
-            false,
-            abilities[i].name.toUpperCase() + ": ",
-            14,
-            "left",
-            "black",
-            "italic"
-          );
-          console.log("Offset: " + offset);
-          boxHeight += offset;
+            tokens: tokenizeMarkdown(abilities[i].name_desc, "italic"),
+            prefix: tokenizeMarkdown(abilities[i].name.toUpperCase() + ": ", "bold"),
+            x: xCoord + 2,
+            y: yCoord + yOffset,
+            maxWidth: boxWidth,
+            lineHeight: abilityLineHeight,
+            fontSize: abilityFontSize,
+            fontColor: "black",
+            draw: false,
+          });
+          boxHeight += result.heightOffset;
         }
         if (abilities[i]?.declare_desc.length > 0) {
-          const offset = getTextHeight(
+          const result = drawInlineTokens({
             ctx,
-            abilities[i]?.declare_desc,
-            boxWidth,
-            xCoord + 2,
-            yCoord + yOffset,
-            false,
-            "Declare: "
-          );
-          boxHeight += offset;
+            tokens: tokenizeMarkdown(abilities[i].declare_desc, "regular"),
+            prefix: tokenizeMarkdown("Declare: ", "bold"),
+            x: xCoord + 2,
+            y: yCoord + yOffset,
+            maxWidth: boxWidth,
+            lineHeight: abilityLineHeight,
+            fontSize: abilityFontSize,
+            fontColor: "black",
+            draw: false,
+          });
+          boxHeight += result.heightOffset;
         }
         if (abilities[i]?.effect_desc.length > 0) {
-          const offset = getTextHeight(
+          const result = drawInlineTokens({
             ctx,
-            abilities[i]?.effect_desc,
-            boxWidth,
-            xCoord + 2,
-            yCoord + yOffset,
-            false,
-            "Effect: "
-          );
-          boxHeight += offset;
+            tokens: tokenizeMarkdown(abilities[i].effect_desc, "regular"),
+            prefix: tokenizeMarkdown("Effect: ", "bold"),
+            x: xCoord + 2,
+            y: yCoord + yOffset,
+            maxWidth: boxWidth,
+            lineHeight: abilityLineHeight,
+            fontSize: abilityFontSize,
+            fontColor: "black",
+            draw: false,
+          });
+          boxHeight += result.heightOffset;
         }
 
         ctx.strokeStyle = abilities[i].ability_line_color;
@@ -384,45 +329,49 @@ export const drawAbilitiesOnCanvas = (
 
         // Draw the ability description
         if (nameDescCombined.length > 0) {
-          const name = abilities[i].name + ": ";
-          const offset = getTextHeight(
+          const result = drawInlineTokens({
             ctx,
-            abilities[i].name_desc,
-            boxWidth,
-            xCoord + 2,
-            yCoord + yOffset,
-            true,
-            name.toUpperCase(),
-            14,
-            "left",
-            "black",
-            "italic"
-          );
-          yOffset += offset;
+            tokens: tokenizeMarkdown(abilities[i].name_desc, "italic"),
+            prefix: tokenizeMarkdown(abilities[i].name.toUpperCase() + ": ", "bold"),
+            x: xCoord + 2,
+            y: yCoord + yOffset,
+            maxWidth: boxWidth,
+            lineHeight: abilityLineHeight,
+            fontSize: abilityFontSize,
+            fontColor: "black",
+            draw: true,
+          });
+          yOffset += result.heightOffset;
         }
         if (abilities[i]?.declare_desc.length > 0) {
-          const offset = getTextHeight(
+          const result = drawInlineTokens({
             ctx,
-            abilities[i]?.declare_desc,
-            boxWidth,
-            xCoord + 2,
-            yCoord + yOffset - 3,
-            true,
-            "Declare: "
-          );
-          yOffset += offset;
+            tokens: tokenizeMarkdown(abilities[i].declare_desc, "regular"),
+            prefix: tokenizeMarkdown("Declare: ", "bold"),
+            x: xCoord + 2,
+            y: yCoord + yOffset - 3,
+            maxWidth: boxWidth,
+            lineHeight: abilityLineHeight,
+            fontSize: abilityFontSize,
+            fontColor: "black",
+            draw: true,
+          });
+          yOffset += result.heightOffset;
         }
         if (abilities[i]?.effect_desc.length > 0) {
-          const offset = getTextHeight(
+          const result = drawInlineTokens({
             ctx,
-            abilities[i]?.effect_desc,
-            boxWidth,
-            xCoord + 2,
-            yCoord + yOffset - 3,
-            true,
-            "Effect: "
-          );
-          yOffset += offset - 20;
+            tokens: tokenizeMarkdown(abilities[i].effect_desc, "regular"),
+            prefix: tokenizeMarkdown("Effect: ", "bold"),
+            x: xCoord + 2,
+            y: yCoord + yOffset - 3,
+            maxWidth: boxWidth,
+            lineHeight: abilityLineHeight,
+            fontSize: abilityFontSize,
+            fontColor: "black",
+            draw: true,
+          });
+          yOffset += result.heightOffset - 20;
         }
 
         // Handle the ability type icon
@@ -436,7 +385,13 @@ export const drawAbilitiesOnCanvas = (
           iconTypeImg.src = iconTypePath;
 
           iconTypeImg.onload = () => {
-            ctx.drawImage(iconTypeImg, xCoord + boxWidth - 15, yCoord - 8, 35, 35);
+            ctx.drawImage(
+              iconTypeImg,
+              xCoord + boxWidth - 15 - (abilityTypeIconSize - 35) / 2,
+              yCoord - 8 - (abilityTypeIconSize - 35) / 2,
+              abilityTypeIconSize,
+              abilityTypeIconSize
+            );
             let fontColor = "";
             if (iconTypePath === AbilityTypeIcon.command) {
               fontColor = "black";
@@ -469,18 +424,19 @@ export const drawAbilitiesOnCanvas = (
             "KEYWORDS",
             xCoord + 5 - lPadding,
             yCoord + boxHeight + 14 + bPadding,
-            abilitiesFont,
+            abilitiesKeywordsFont,
             "left",
-            "white"
+            "white",
+            "bold"
           );
           drawText(
             ctx,
             abilities[i].keywords,
             xCoord + 81 - lPadding,
             yCoord + boxHeight + 14 + bPadding,
-            abilitiesFont,
+            abilitiesKeywordsFont,
             "left",
-            "black"
+            "#000000"
           );
         }
 
@@ -520,13 +476,14 @@ const drawBattleDamagedWeaponIcon = (
   ctx: CanvasRenderingContext2D,
   battleDamagdIconPath: string,
   x: number,
-  y: number
+  y: number,
+  iconSize: number
 ) => {
   const iconPath = battleDamagdIconPath;
   const iconImg = new Image();
   iconImg.src = iconPath;
   iconImg.onload = () => {
-    ctx.drawImage(iconImg, x + 1, y + 1, defaultAbilityIconWidthHeight, defaultAbilityIconWidthHeight);
+    ctx.drawImage(iconImg, x + 1, y + 1, iconSize, iconSize);
   };
 };
 
@@ -556,18 +513,28 @@ export const drawWeaponsOnCanvas = (
   ctx: CanvasRenderingContext2D,
   image: HTMLImageElement,
   rangedWeapons: RangedWeaponStats[],
-  meleeWeapons: MeleeWeaponStats[]
+  meleeWeapons: MeleeWeaponStats[],
+  customization: CustomizationState
 ) => {
   const width = 640;
-  const height = 18;
+  const height = customization.lineHeights.weapons;
+  const wpnFont = customization.fontSizes.weapons;
+  const wpnBannerFontSize = customization.fontSizes.weaponsHeader;
+  const wpnAbilityLineHeight = Math.max(1, height - 1);
+  const wpnBattleIconSize = customization.iconSizes.ability;
+  const halfHeight = Math.round(height / 2);
+  const wpnHeaderYPos = wpnBannerPosY + halfHeight;
+  const textPosY = wpnBannerPosY + height + halfHeight;
+  const previousBaseline = ctx.textBaseline;
+  ctx.textBaseline = "middle";
   ctx.globalAlpha = 1;
-  let textOffset = 1;
-  let imageOffset = 18;
+  let textOffset = 0;
+  let imageOffset = height;
   let mWpnBannerYPos = wpnBannerPosY;
   let lineCount = 1;
   let tempLineCount = 0;
   let currentWpnLineCount = 1;
-  let yAnchor = defaultYPos;
+  let yAnchor = wpnBannerPosY + height * 2 + halfHeight;
 
   /* Draw out ranged weapon text */
   if (rangedWeapons.length > 0 || meleeWeapons.length > 0) {
@@ -588,14 +555,14 @@ export const drawWeaponsOnCanvas = (
           const lines = splitTextToLines(weaponCharPerLine, rangedWeapons[i].name);
           let tempOffset = textOffset;
           for (let i = 0; i < lines.length; i++) {
-            drawText(ctx, lines[i], 120, textPosY + tempOffset, wpnFont, "center", "black");
-            tempOffset += 17;
+            drawText(ctx, lines[i], 120, textPosY + tempOffset, wpnFont, "center", "#000000");
+            tempOffset += wpnAbilityLineHeight;
             tempLineCount += 1;
           }
           currentWpnLineCount = checkLineCount(currentWpnLineCount, tempLineCount);
           tempLineCount = 0;
         } else {
-          drawText(ctx, rangedWeapons[i].name, 120, textPosY + textOffset, wpnFont, "center", "black");
+          drawText(ctx, rangedWeapons[i].name, 120, textPosY + textOffset, wpnFont, "center", "#000000");
         }
 
         // Draw weapon Override if there is one
@@ -661,7 +628,7 @@ export const drawWeaponsOnCanvas = (
                     textPosY + textOffset,
                     wpnFont,
                     "center",
-                    "black"
+                    "#000000"
                   );
                 }
 
@@ -676,10 +643,10 @@ export const drawWeaponsOnCanvas = (
               }
               if (firstIndex === lastIndex) {
                 // If there is only one value
-                drawText(ctx, "*", drawTextCenter, textPosY + textOffset, wpnFont, "center", "black");
+                drawText(ctx, "*", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000");
               } else if (lastIndex - firstIndex === 1) {
                 // If there are only two true values.
-                drawText(ctx, "See Below", drawTextCenter, textPosY + textOffset, wpnFont, "center", "black");
+                drawText(ctx, "See Below", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000");
               } else {
                 // Draw left path
                 drawLine(
@@ -696,7 +663,7 @@ export const drawWeaponsOnCanvas = (
                   drawTextLeft - 10,
                   textPosY + textOffset - 2
                 );
-                drawText(ctx, "See Below", drawTextCenter, textPosY + textOffset, wpnFont, "center", "black");
+                drawText(ctx, "See Below", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000");
                 // Draw right path
                 drawLine(
                   ctx,
@@ -717,33 +684,32 @@ export const drawWeaponsOnCanvas = (
           }
         } else {
           // If not override, draw weapons normally.
-          drawText(ctx, rangedWeapons[i].range + '"', rng, textPosY + textOffset, wpnFont, "center", "black");
-          drawText(ctx, rangedWeapons[i].atk, atk, textPosY + textOffset, wpnFont, "center", "black");
-          drawText(ctx, rangedWeapons[i].toHit, hit, textPosY + textOffset, wpnFont, "center", "black");
-          drawText(ctx, rangedWeapons[i].toWound, wnd, textPosY + textOffset, wpnFont, "center", "black");
-          drawText(ctx, rangedWeapons[i].rend, rnd, textPosY + textOffset, wpnFont, "center", "black");
-          drawText(ctx, rangedWeapons[i].damage, dmg, textPosY + textOffset, wpnFont, "center", "black");
+          drawText(ctx, rangedWeapons[i].range + '"', rng, textPosY + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, rangedWeapons[i].atk, atk, textPosY + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, rangedWeapons[i].toHit, hit, textPosY + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, rangedWeapons[i].toWound, wnd, textPosY + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, rangedWeapons[i].rend, rnd, textPosY + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, rangedWeapons[i].damage, dmg, textPosY + textOffset, wpnFont, "center", "#000000");
         }
 
-        // Check if the Abilities are double long enough to be extra spaced/
-        if (rangedWeapons[i].ability.length > weaponCharPerLine) {
-          const lines = splitTextToLines(weaponCharPerLine, rangedWeapons[i].ability);
-          let tempOffset = textOffset;
-          // If they are, draw them double spaced. .
-          for (let i = 0; i < lines.length; i++) {
-            drawText(ctx, lines[i], 550, textPosY + tempOffset, wpnFont, "center", "black");
-            tempOffset += 17;
-            tempLineCount += 1;
-          }
-          currentWpnLineCount = checkLineCount(currentWpnLineCount, tempLineCount);
-          tempLineCount = 0;
-        } else {
-          drawText(ctx, rangedWeapons[i].ability, 550, textPosY + textOffset, wpnFont, "center", "black");
-        }
-
-        // If the ranged weapon ability is empty, draw a '-'
         if (rangedWeapons[i].ability.length === 0) {
-          drawText(ctx, "-", 550, textPosY + textOffset, wpnFont, "center", "black");
+          drawText(ctx, "-", 550, textPosY + textOffset, wpnFont, "center", "#000000");
+        } else {
+          const result = drawInlineTokens({
+            ctx,
+            tokens: tokenizeMarkdown(rangedWeapons[i].ability, "regular"),
+            x: 450,
+            y: textPosY + textOffset,
+            maxWidth: 200,
+            lineHeight: wpnAbilityLineHeight,
+            fontSize: wpnFont,
+            fontColor: "#000000",
+            draw: true,
+            alignment: "center",
+          });
+          if (result.lineCount > 1) {
+            currentWpnLineCount = checkLineCount(currentWpnLineCount, result.lineCount);
+          }
         }
         // Check if odd or even. Odd means fully transparent, even means partially
         if (i % 2 === 0) {
@@ -761,11 +727,12 @@ export const drawWeaponsOnCanvas = (
             ctx,
             AbilityIconPath.battleDamagedWeaponPath,
             wpnBannerPosX,
-            wpnBannerPosY + imageOffset
+            wpnBannerPosY + imageOffset,
+            wpnBattleIconSize
           );
         }
-        textOffset += 18 * currentWpnLineCount;
-        imageOffset = imageOffset + 18 * currentWpnLineCount;
+        textOffset += height * currentWpnLineCount;
+        imageOffset = imageOffset + height * currentWpnLineCount;
         yAnchor += textOffset;
         lineCount += currentWpnLineCount;
         tempLineCount = 0;
@@ -780,12 +747,12 @@ export const drawWeaponsOnCanvas = (
 
       // If we have ranged weapon, increment the text by the current line count.
       if (rangedWeapons.length > 0) {
-        mWpnBannerYPos += 18 * lineCount;
-        mBannerTextPos += 18 * lineCount;
-        mTextPos += 18 * lineCount;
-        imageOffset += 18;
+        mWpnBannerYPos += height * lineCount;
+        mBannerTextPos += height * lineCount;
+        mTextPos += height * lineCount;
+        imageOffset += height;
       }
-      mTextPos += 18;
+      mTextPos += height;
       ctx.globalAlpha = 1;
       ctx.drawImage(image, wpnBannerPosX, mWpnBannerYPos, width, height);
 
@@ -804,14 +771,14 @@ export const drawWeaponsOnCanvas = (
           const lines = splitTextToLines(weaponCharPerLine, meleeWeapons[i].name);
           let tempOffset = textOffset;
           for (let i = 0; i < lines.length; i++) {
-            drawText(ctx, lines[i], 120, mTextPos + tempOffset, wpnFont, "center", "black");
-            tempOffset += 18;
+            drawText(ctx, lines[i], 120, mTextPos + tempOffset, wpnFont, "center", "#000000");
+            tempOffset += height;
             tempLineCount += 1;
           }
           currentWpnLineCount = checkLineCount(currentWpnLineCount, tempLineCount);
           tempLineCount = 0;
         } else {
-          drawText(ctx, meleeWeapons[i].name, 120, mTextPos + textOffset, wpnFont, "center", "black");
+          drawText(ctx, meleeWeapons[i].name, 120, mTextPos + textOffset, wpnFont, "center", "#000000");
         }
 
         // Draw weapon Override if there is one
@@ -869,7 +836,7 @@ export const drawWeaponsOnCanvas = (
                     mTextPos + textOffset,
                     wpnFont,
                     "center",
-                    "black"
+                    "#000000"
                   );
                 }
 
@@ -884,10 +851,10 @@ export const drawWeaponsOnCanvas = (
               }
               if (firstIndex === lastIndex) {
                 // If there is only one value
-                drawText(ctx, "*", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "black");
+                drawText(ctx, "*", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000");
               } else if (lastIndex - firstIndex === 1) {
                 // If there are only two true values.
-                drawText(ctx, "See Below", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "black");
+                drawText(ctx, "See Below", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000");
               } else {
                 // Draw left path
                 drawLine(
@@ -904,7 +871,7 @@ export const drawWeaponsOnCanvas = (
                   drawTextLeft - 10,
                   mTextPos + textOffset - 2
                 );
-                drawText(ctx, "See Below", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "black");
+                drawText(ctx, "See Below", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000");
                 // Draw right path
                 drawLine(
                   ctx,
@@ -925,31 +892,31 @@ export const drawWeaponsOnCanvas = (
           }
         } else {
           // If not override, draw weapons normally.
-          drawText(ctx, meleeWeapons[i].atk, atk, mTextPos + textOffset, wpnFont, "center", "black");
-          drawText(ctx, meleeWeapons[i].toHit, hit, mTextPos + textOffset, wpnFont, "center", "black");
-          drawText(ctx, meleeWeapons[i].toWound, wnd, mTextPos + textOffset, wpnFont, "center", "black");
-          drawText(ctx, meleeWeapons[i].rend, rnd, mTextPos + textOffset, wpnFont, "center", "black");
-          drawText(ctx, meleeWeapons[i].damage, dmg, mTextPos + textOffset, wpnFont, "center", "black");
+          drawText(ctx, meleeWeapons[i].atk, atk, mTextPos + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, meleeWeapons[i].toHit, hit, mTextPos + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, meleeWeapons[i].toWound, wnd, mTextPos + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, meleeWeapons[i].rend, rnd, mTextPos + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, meleeWeapons[i].damage, dmg, mTextPos + textOffset, wpnFont, "center", "#000000");
         }
 
-        // Draw weapon abilities
-        if (meleeWeapons[i].ability.length > weaponCharPerLine) {
-          const lines = splitTextToLines(weaponCharPerLine, meleeWeapons[i].ability);
-          let tempOffset = textOffset;
-          for (let i = 0; i < lines.length; i++) {
-            drawText(ctx, lines[i], 550, mTextPos + tempOffset, wpnFont, "center", "black");
-            tempOffset += 17;
-            tempLineCount += 1;
-          }
-          currentWpnLineCount = checkLineCount(currentWpnLineCount, tempLineCount);
-          tempLineCount = 0;
-        } else {
-          drawText(ctx, meleeWeapons[i].ability, 550, mTextPos + textOffset, wpnFont, "center", "black");
-        }
-
-        // If there is no ability, draw a '-'
         if (meleeWeapons[i].ability.length === 0) {
-          drawText(ctx, "-", 550, textPosY + textOffset, wpnFont, "center", "black");
+          drawText(ctx, "-", 550, textPosY + textOffset, wpnFont, "center", "#000000");
+        } else {
+          const result = drawInlineTokens({
+            ctx,
+            tokens: tokenizeMarkdown(meleeWeapons[i].ability, "regular"),
+            x: 450,
+            y: mTextPos + textOffset,
+            maxWidth: 200,
+            lineHeight: wpnAbilityLineHeight,
+            fontSize: wpnFont,
+            fontColor: "#000000",
+            draw: true,
+            alignment: "center",
+          });
+          if (result.lineCount > 1) {
+            currentWpnLineCount = checkLineCount(currentWpnLineCount, result.lineCount);
+          }
         }
 
         // Check if odd or even. Odd means fully transparent, even means partially
@@ -968,12 +935,13 @@ export const drawWeaponsOnCanvas = (
             ctx,
             AbilityIconPath.battleDamagedWeaponPath,
             wpnBannerPosX,
-            wpnBannerPosY + imageOffset
+            wpnBannerPosY + imageOffset,
+            wpnBattleIconSize
           );
         }
 
-        textOffset += 18 * currentWpnLineCount;
-        imageOffset = imageOffset + 18 * currentWpnLineCount;
+        textOffset += height * currentWpnLineCount;
+        imageOffset = imageOffset + height * currentWpnLineCount;
         yAnchor += textOffset;
         lineCount += currentWpnLineCount;
         tempLineCount = 0;
@@ -982,6 +950,7 @@ export const drawWeaponsOnCanvas = (
     }
     yAnchor = imageOffset + wpnBannerPosY;
   }
+  ctx.textBaseline = previousBaseline;
   return yAnchor; // Return the updated yAnchor
 };
 

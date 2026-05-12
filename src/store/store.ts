@@ -9,6 +9,9 @@ import { keywordsSlice } from "../components/Keywords/KeywordsSlice";
 import { loadoutSlice } from "../components/Loadouts/LoadoutSlice";
 import { warscrollCardSlice } from "../components/WarscrollCard/WarscrollCardSlice";
 import { weaponsSlice } from "../components/Weapons/WeaponsSlice";
+import { modelImageSlice } from "../components/ModelImage/ModelImageSlice";
+import { savedCardsSlice } from "../components/SavedCards/SavedCardsSlice";
+import { customizationSlice } from "../components/Customization/CustomizationSlice";
 
 // Combine reducers
 const rootReducer = combineReducers({
@@ -19,6 +22,9 @@ const rootReducer = combineReducers({
   weapons: weaponsSlice.reducer,
   abilities: abilitiesSlice.reducer,
   loadout: loadoutSlice.reducer,
+  modelImage: modelImageSlice.reducer,
+  savedCards: savedCardsSlice.reducer,
+  customization: customizationSlice.reducer,
 });
 
 // Persist config
