@@ -10,7 +10,18 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import { Shield, Home, RestartAlt, Download, GitHub, CloudDownload, CloudUpload } from "@mui/icons-material";
+import {
+  Shield,
+  Home,
+  RestartAlt,
+  Download,
+  GitHub,
+  CloudDownload,
+  CloudUpload,
+  ArrowDropDown,
+} from "@mui/icons-material";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 
@@ -30,8 +41,25 @@ export default function ResponsiveDrawer() {
 
   const dispatch = useDispatch();
 
-  const handleDownload = () => {
-    dispatch(initDownload()); // Dispatch the downloadImage action
+  const [downloadMenuAnchor, setDownloadMenuAnchor] = React.useState<HTMLElement | null>(null);
+  const isDownloadMenuOpen = Boolean(downloadMenuAnchor);
+
+  const handleOpenDownloadMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setDownloadMenuAnchor(event.currentTarget);
+  };
+
+  const handleCloseDownloadMenu = () => {
+    setDownloadMenuAnchor(null);
+  };
+
+  const handleDownloadPng = () => {
+    dispatch(initDownload("png"));
+    handleCloseDownloadMenu();
+  };
+
+  const handleDownloadPdfA6 = () => {
+    dispatch(initDownload("pdf-a6"));
+    handleCloseDownloadMenu();
   };
 
   const [isClosing, setIsClosing] = React.useState(false);
@@ -256,16 +284,29 @@ export default function ResponsiveDrawer() {
             }}
           ></Box>
 
-          {/* PDF related icons */}
+          {/* Download menu */}
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label="download warscroll"
+            aria-haspopup="true"
+            aria-expanded={isDownloadMenuOpen ? "true" : undefined}
             size="large"
-            sx={{ justifyContent: "right" }}
-            onClick={handleDownload}
+            sx={{ justifyContent: "right", pr: 0.5 }}
+            onClick={handleOpenDownloadMenu}
           >
             <Download />
+            <ArrowDropDown />
           </IconButton>
+          <Menu
+            anchorEl={downloadMenuAnchor}
+            open={isDownloadMenuOpen}
+            onClose={handleCloseDownloadMenu}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+          >
+            <MenuItem onClick={handleDownloadPng}>Download as PNG</MenuItem>
+            <MenuItem onClick={handleDownloadPdfA6}>Download as A6 PDF</MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 

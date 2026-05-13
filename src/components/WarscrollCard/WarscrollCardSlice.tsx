@@ -1,16 +1,18 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+
+export type DownloadFormat = "png" | "pdf-a6";
 
 export const warscrollCardSlice = createSlice({
   name: "warscrollDownload",
   initialState: {
-    triggerDownload: false,
+    downloadFormat: null as DownloadFormat | null,
   },
   reducers: {
-    initDownload: (state) => {
-      state.triggerDownload = true;
+    initDownload: (state, action: PayloadAction<DownloadFormat>) => {
+      state.downloadFormat = action.payload;
     },
     resetDownload: (state) => {
-      state.triggerDownload = false;
+      state.downloadFormat = null;
     },
   },
 });
