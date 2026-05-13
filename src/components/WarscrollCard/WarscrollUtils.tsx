@@ -138,6 +138,89 @@ export const drawLoadoutOnCanvas = (
   return yOffset - 120;
 };
 
+interface AbilityTitleWord {
+  text: string;
+  x: number;
+}
+
+interface AbilityTitleLayout {
+  lines: AbilityTitleWord[][];
+}
+
+const layoutAbilityTitle = (
+  ctx: CanvasRenderingContext2D,
+  title: string,
+  x: number,
+  maxWidth: number,
+  iconOffset: number,
+  fontSize: number,
+  lineGap: number
+): AbilityTitleLayout => {
+  const words = title.split(/\s+/).filter(Boolean);
+  const lines: AbilityTitleWord[][] = [];
+  const spaceWidth = ctx.measureText(" ").width;
+  let currentLine: AbilityTitleWord[] = [];
+  let xOffset = x + iconOffset;
+  const lineMaxX = x + maxWidth;
+
+  const pushLine = () => {
+    lines.push(currentLine);
+    currentLine = [];
+    xOffset = x;
+  };
+
+  for (const word of words) {
+    const wordWidth = ctx.measureText(word).width;
+
+    if (currentLine.length > 0 && xOffset + wordWidth > lineMaxX) {
+      pushLine();
+    }
+
+    currentLine.push({
+      text: word,
+      x: xOffset,
+    });
+    xOffset += wordWidth + spaceWidth;
+  }
+
+  if (currentLine.length > 0 || lines.length === 0) {
+    lines.push(currentLine);
+  }
+
+  return {
+    lines,
+  };
+};
+
+const drawAbilityBanner = (
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) => {
+  if (height <= image.height) {
+    ctx.drawImage(image, x, y, width, height);
+    return;
+  }
+
+  const sourceMiddleY = Math.floor(image.height / 2);
+  ctx.drawImage(image, 0, 0, image.width, sourceMiddleY, x, y, width, sourceMiddleY);
+  ctx.drawImage(image, 0, sourceMiddleY, image.width, 1, x, y + sourceMiddleY, width, Math.max(0, height - image.height));
+  ctx.drawImage(
+    image,
+    0,
+    sourceMiddleY,
+    image.width,
+    image.height - sourceMiddleY,
+    x,
+    y + Math.max(sourceMiddleY, height - (image.height - sourceMiddleY)),
+    width,
+    image.height - sourceMiddleY
+  );
+};
+
 export const drawAbilitiesOnCanvas = (
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
@@ -192,54 +275,44 @@ export const drawAbilitiesOnCanvas = (
       img.onload = () => {
         const xCoord = coords[i]?.x;
         const yCoord = coords[i]?.y;
-        const abilityTitle = abilities[i].ability_restriction + abilities[i].ability_timing;
+        const abilityTitle = [abilities[i].ability_restriction.trim(), abilities[i].ability_timing.trim()]
+          .filter(Boolean)
+          .join(" ");
 
         const bannerTopPadding = 3;
         const bannerBottomPadding = 3;
         const bannerLineGap = 2;
         const bannerSingleHeight = bannerTopPadding + abilityHeaderFontSize + bannerBottomPadding;
-        const bannerDoubleHeight = bannerSingleHeight + abilityHeaderFontSize + bannerLineGap;
-        const firstBaselineY = bannerTopPadding + Math.round(abilityHeaderFontSize * 0.85);
-        const secondBaselineY = firstBaselineY + abilityHeaderFontSize + bannerLineGap;
+        const bannerBaselineY = bannerTopPadding + Math.round(abilityHeaderFontSize * 0.85);
 
         let bannerHeight = bannerSingleHeight;
-        let tempAbilityIconOffset = abilityIconSize;
         let boxHeight = 0;
-        let isDoubleBanner = false;
 
         if (abilityTitle.length > 0) {
-          const titleLines = abilityTitle.split(" ");
-          const width = boxWidth + xCoord;
-          let xOffset = xCoord;
-
           ctx.font = `${abilityHeaderFontSize}px Minion Pro`;
           ctx.fillStyle = "white";
           ctx.textAlign = "left";
-          titleLines.forEach((word) => {
-            const wordWidth = ctx.measureText(word).width;
-            if (xOffset + wordWidth > width - tempAbilityIconOffset) {
-              bannerHeight = bannerDoubleHeight;
-              xOffset = xCoord;
-              isDoubleBanner = true;
-              tempAbilityIconOffset = 0;
-            }
-            xOffset += wordWidth + ctx.measureText(" ").width;
-          });
-          ctx.drawImage(img, xCoord - 8, yCoord, boxWidth + 15, bannerHeight);
+          const titleLayout = layoutAbilityTitle(
+            ctx,
+            abilityTitle,
+            xCoord,
+            boxWidth,
+            abilityIconSize,
+            abilityHeaderFontSize,
+            bannerLineGap
+          );
+          bannerHeight =
+            bannerTopPadding +
+            titleLayout.lines.length * abilityHeaderFontSize +
+            Math.max(0, titleLayout.lines.length - 1) * bannerLineGap +
+            bannerBottomPadding;
 
-          xOffset = xCoord;
-          tempAbilityIconOffset = abilityIconSize;
-          let currentLine = 0;
-          titleLines.forEach((word) => {
-            const wordWidth = ctx.measureText(word).width;
-            if (xOffset + wordWidth > width - tempAbilityIconOffset) {
-              currentLine = 1;
-              xOffset = coords[i].x;
-              tempAbilityIconOffset = 0;
-            }
-            const baselineY = currentLine === 0 ? firstBaselineY : secondBaselineY;
-            ctx.fillText(word, xOffset + tempAbilityIconOffset, yCoord + baselineY);
-            xOffset += wordWidth + ctx.measureText(" ").width;
+          drawAbilityBanner(ctx, img, xCoord - 8, yCoord, boxWidth + 15, bannerHeight);
+          titleLayout.lines.forEach((line, lineIndex) => {
+            const baselineY = bannerBaselineY + lineIndex * (abilityHeaderFontSize + bannerLineGap);
+            line.forEach((word) => {
+              ctx.fillText(word.text, word.x, yCoord + baselineY);
+            });
           });
           yOffset += bannerHeight;
 
@@ -428,11 +501,8 @@ export const drawAbilitiesOnCanvas = (
 
         ctx.save();
 
-        if (isDoubleBanner) {
-          boxHeightArr[i] = boxHeight + 55;
-        } else {
-          boxHeightArr[i] = boxHeight + 35;
-        }
+        const abilityCardSpacing = bannerHeight === bannerSingleHeight ? 35 - bannerSingleHeight : 5;
+        boxHeightArr[i] = boxHeight + bannerHeight + abilityCardSpacing;
 
         if (i + 1 < abilities.length) {
           const newCoordinate: Coordinate = { x: 0, y: coords[0].y };

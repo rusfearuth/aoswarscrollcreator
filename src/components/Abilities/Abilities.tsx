@@ -774,10 +774,15 @@ export default function Abilities() {
                 options={AbilityUsageRestrictions}
                 fullWidth
                 freeSolo
+                value={ability.ability_restriction}
+                inputValue={ability.ability_restriction}
                 onChange={(_event, value) => {
                   if (value !== null) {
                     handleInputAbilityChange(index, "ability_restriction", value);
                   }
+                }}
+                onInputChange={(_event, value) => {
+                  handleInputAbilityChange(index, "ability_restriction", value);
                 }}
                 renderTags={(value, props) =>
                   value.map((option, index) => <Chip label={option} {...props({ index })} />)
@@ -785,9 +790,6 @@ export default function Abilities() {
                 renderInput={(params) => (
                   <TextField
                     sx={{ mt: 1, mb: 1 }}
-                    onChange={(e) => {
-                      handleInputAbilityChange(index, "ability_restriction", e.target.value);
-                    }}
                     label="Ability Restrictions (Once Per Turn (Army), etc)"
                     {...params}
                     id="ability-keywords"
