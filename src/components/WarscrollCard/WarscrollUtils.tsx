@@ -6,9 +6,6 @@ import { AbilityIconPath, AbilityTypeIcon } from "../Abilities/AbilitiesInfo";
 import { drawInlineTokens, tokenizeMarkdown } from "./MarkdownText";
 import { CustomizationState } from "../Customization/CustomizationSlice";
 
-// Character limits and offeets
-const weaponCharPerLine = 27;
-
 // Font sizes
 const factionTitleFontSize = 12;
 const warscrollNameFontSize = 28;
@@ -18,6 +15,9 @@ const abilityTypeFontSize = 16;
 // Banner positions
 const wpnBannerPosX = 10;
 const wpnBannerPosY = 200;
+const weaponTableWidth = 640;
+const weaponTableRight = wpnBannerPosX + weaponTableWidth;
+const weaponCellPadding = 5;
 
 // Weapon Text Draw positions
 const rng = 240;
@@ -26,6 +26,12 @@ const hit = 320;
 const wnd = 360;
 const rnd = 400;
 const dmg = 440;
+const abilityTextX = 555;
+const rangedWeaponNameCell = { x: 20, width: 200 };
+const meleeWeaponNameCell = { x: 15, width: 240 };
+const weaponAbilityCell = { x: 460 + weaponCellPadding, width: weaponTableRight - 460 - weaponCellPadding * 2 };
+const rangedWeaponColumnBoundaries = [220, 260, 300, 340, 380, 420, 460];
+const meleeWeaponColumnBoundaries = [260, 300, 340, 380, 420, 460];
 
 // Box visuals
 const rectTransparency = 0.5;
@@ -73,28 +79,6 @@ export const drawText = (
   ctx.textAlign = alignment;
   ctx.globalAlpha = 1;
   ctx.fillText(text, x, y); // Change the coordinates as needed
-};
-
-const splitTextToLines = (charLimit: number, text: string): string[] => {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let currentLine = "";
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-    if ((currentLine + word).length <= charLimit) {
-      currentLine += " " + word;
-      // Fixes a minor bug where the first word of the first line has an extra space
-      if (i == 0) {
-        currentLine = currentLine.slice(1);
-      }
-    } else {
-      lines.push(currentLine);
-      currentLine = word;
-    }
-  }
-  lines.push(currentLine);
-  return lines;
 };
 
 export const drawLoadoutOnCanvas = (
@@ -436,7 +420,8 @@ export const drawAbilitiesOnCanvas = (
             yCoord + boxHeight + 14 + bPadding,
             abilitiesKeywordsFont,
             "left",
-            "#000000"
+            "#000000",
+            "bold"
           );
         }
 
@@ -495,6 +480,32 @@ const checkLineCount = (currentLineCount: number, tempLineCount: number) => {
   }
 };
 
+const drawWeaponCellText = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  fontSize: number
+): number => {
+  const result = drawInlineTokens({
+    ctx,
+    tokens: tokenizeMarkdown(text, "regular"),
+    x,
+    y,
+    maxWidth,
+    lineHeight,
+    fontSize,
+    fontColor: "#000000",
+    draw: true,
+    alignment: "center",
+    breakLongTokens: true,
+  });
+
+  return result.lineCount;
+};
+
 const drawLine = (
   ctx: CanvasRenderingContext2D,
   xStartPoint: number,
@@ -509,6 +520,53 @@ const drawLine = (
   ctx.stroke();
 };
 
+const getWeaponBannerColor = (image: HTMLImageElement): string => {
+  try {
+    const sampleCanvas = document.createElement("canvas");
+    sampleCanvas.width = 1;
+    sampleCanvas.height = 1;
+    const sampleCtx = sampleCanvas.getContext("2d");
+    if (!sampleCtx) return "#000000";
+
+    sampleCtx.drawImage(image, 0, 0, 1, 1);
+    const [r, g, b, a] = sampleCtx.getImageData(0, 0, 1, 1).data;
+    if (a === 0) return "#000000";
+    return `rgb(${r}, ${g}, ${b})`;
+  } catch {
+    return "#000000";
+  }
+};
+
+const drawWeaponRowGuides = (
+  ctx: CanvasRenderingContext2D,
+  rowX: number,
+  rowY: number,
+  rowWidth: number,
+  rowHeight: number,
+  columnBoundaries: number[],
+  color: string
+) => {
+  const bottomY = rowY + rowHeight - 0.5;
+
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.lineCap = "butt";
+  ctx.beginPath();
+
+  columnBoundaries.forEach((x) => {
+    const crispX = x + 0.5;
+    ctx.moveTo(crispX, rowY);
+    ctx.lineTo(crispX, rowY + rowHeight);
+  });
+
+  ctx.moveTo(rowX, bottomY);
+  ctx.lineTo(rowX + rowWidth, bottomY);
+  ctx.stroke();
+  ctx.restore();
+};
+
 export const drawWeaponsOnCanvas = (
   ctx: CanvasRenderingContext2D,
   image: HTMLImageElement,
@@ -516,7 +574,7 @@ export const drawWeaponsOnCanvas = (
   meleeWeapons: MeleeWeaponStats[],
   customization: CustomizationState
 ) => {
-  const width = 640;
+  const width = weaponTableWidth;
   const height = customization.lineHeights.weapons;
   const wpnFont = customization.fontSizes.weapons;
   const wpnBannerFontSize = customization.fontSizes.weaponsHeader;
@@ -532,38 +590,37 @@ export const drawWeaponsOnCanvas = (
   let imageOffset = height;
   let mWpnBannerYPos = wpnBannerPosY;
   let lineCount = 1;
-  let tempLineCount = 0;
   let currentWpnLineCount = 1;
   let yAnchor = wpnBannerPosY + height * 2 + halfHeight;
 
   /* Draw out ranged weapon text */
   if (rangedWeapons.length > 0 || meleeWeapons.length > 0) {
+    const weaponLineColor = getWeaponBannerColor(image);
     ctx.drawImage(image, wpnBannerPosX, wpnBannerPosY, width, height);
 
     if (rangedWeapons.length > 0) {
-      drawText(ctx, "RANGED WEAPONS", 110, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
+      drawText(ctx, "RANGED WEAPONS", 115, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Rng", 240, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Atk", 280, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Hit", 320, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Wnd", 360, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Rnd", 400, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Dmg", 440, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
-      drawText(ctx, "Ability", 550, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
+      drawText(ctx, "Ability", abilityTextX, wpnHeaderYPos, wpnBannerFontSize, "center", "white");
 
       for (let i = 0; i < rangedWeapons.length; i++) {
-        if (rangedWeapons[i].name.length > weaponCharPerLine) {
-          const lines = splitTextToLines(weaponCharPerLine, rangedWeapons[i].name);
-          let tempOffset = textOffset;
-          for (let i = 0; i < lines.length; i++) {
-            drawText(ctx, lines[i], 120, textPosY + tempOffset, wpnFont, "center", "#000000");
-            tempOffset += wpnAbilityLineHeight;
-            tempLineCount += 1;
-          }
-          currentWpnLineCount = checkLineCount(currentWpnLineCount, tempLineCount);
-          tempLineCount = 0;
-        } else {
-          drawText(ctx, rangedWeapons[i].name, 120, textPosY + textOffset, wpnFont, "center", "#000000");
-        }
+        currentWpnLineCount = checkLineCount(
+          currentWpnLineCount,
+          drawWeaponCellText(
+            ctx,
+            rangedWeapons[i].name,
+            rangedWeaponNameCell.x,
+            textPosY + textOffset,
+            rangedWeaponNameCell.width,
+            wpnAbilityLineHeight,
+            wpnFont
+          )
+        );
 
         // Draw weapon Override if there is one
         if (rangedWeapons[i].isOverride && rangedWeapons[i].override?.length) {
@@ -693,19 +750,20 @@ export const drawWeaponsOnCanvas = (
         }
 
         if (rangedWeapons[i].ability.length === 0) {
-          drawText(ctx, "-", 550, textPosY + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, "-", abilityTextX, textPosY + textOffset, wpnFont, "center", "#000000");
         } else {
           const result = drawInlineTokens({
             ctx,
             tokens: tokenizeMarkdown(rangedWeapons[i].ability, "regular"),
-            x: 450,
+            x: weaponAbilityCell.x,
             y: textPosY + textOffset,
-            maxWidth: 200,
+            maxWidth: weaponAbilityCell.width,
             lineHeight: wpnAbilityLineHeight,
             fontSize: wpnFont,
             fontColor: "#000000",
             draw: true,
             alignment: "center",
+            breakLongTokens: true,
           });
           if (result.lineCount > 1) {
             currentWpnLineCount = checkLineCount(currentWpnLineCount, result.lineCount);
@@ -720,6 +778,15 @@ export const drawWeaponsOnCanvas = (
 
         // Finally, draw our image
         ctx.drawImage(image, wpnBannerPosX, wpnBannerPosY + imageOffset, width, height * currentWpnLineCount);
+        drawWeaponRowGuides(
+          ctx,
+          wpnBannerPosX,
+          wpnBannerPosY + imageOffset,
+          width,
+          height * currentWpnLineCount,
+          rangedWeaponColumnBoundaries,
+          weaponLineColor
+        );
 
         // If we have a battle damaged weapon, add battle damage icon
         if (rangedWeapons[i].isBattleDamaged) {
@@ -735,7 +802,6 @@ export const drawWeaponsOnCanvas = (
         imageOffset = imageOffset + height * currentWpnLineCount;
         yAnchor += textOffset;
         lineCount += currentWpnLineCount;
-        tempLineCount = 0;
         currentWpnLineCount = 1;
       }
     }
@@ -757,29 +823,28 @@ export const drawWeaponsOnCanvas = (
       ctx.drawImage(image, wpnBannerPosX, mWpnBannerYPos, width, height);
 
       // Draw Melee Header Text
-      drawText(ctx, "MELEE WEAPONS", 110, mBannerTextPos, wpnBannerFontSize, "center", "white");
+      drawText(ctx, "MELEE WEAPONS", 135, mBannerTextPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Atk", 280, mBannerTextPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Hit", 320, mBannerTextPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Wnd", 360, mBannerTextPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Rnd", 400, mBannerTextPos, wpnBannerFontSize, "center", "white");
       drawText(ctx, "Dmg", 440, mBannerTextPos, wpnBannerFontSize, "center", "white");
-      drawText(ctx, "Ability", 550, mBannerTextPos, wpnBannerFontSize, "center", "white");
+      drawText(ctx, "Ability", abilityTextX, mBannerTextPos, wpnBannerFontSize, "center", "white");
 
       for (let i = 0; i < meleeWeapons.length; i++) {
         // Draw weapon name
-        if (meleeWeapons[i].name.length > weaponCharPerLine) {
-          const lines = splitTextToLines(weaponCharPerLine, meleeWeapons[i].name);
-          let tempOffset = textOffset;
-          for (let i = 0; i < lines.length; i++) {
-            drawText(ctx, lines[i], 120, mTextPos + tempOffset, wpnFont, "center", "#000000");
-            tempOffset += height;
-            tempLineCount += 1;
-          }
-          currentWpnLineCount = checkLineCount(currentWpnLineCount, tempLineCount);
-          tempLineCount = 0;
-        } else {
-          drawText(ctx, meleeWeapons[i].name, 120, mTextPos + textOffset, wpnFont, "center", "#000000");
-        }
+        currentWpnLineCount = checkLineCount(
+          currentWpnLineCount,
+          drawWeaponCellText(
+            ctx,
+            meleeWeapons[i].name,
+            meleeWeaponNameCell.x,
+            mTextPos + textOffset,
+            meleeWeaponNameCell.width,
+            wpnAbilityLineHeight,
+            wpnFont
+          )
+        );
 
         // Draw weapon Override if there is one
         if (meleeWeapons[i].isOverride && meleeWeapons[i].override?.length) {
@@ -900,19 +965,20 @@ export const drawWeaponsOnCanvas = (
         }
 
         if (meleeWeapons[i].ability.length === 0) {
-          drawText(ctx, "-", 550, textPosY + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, "-", abilityTextX, mTextPos + textOffset, wpnFont, "center", "#000000");
         } else {
           const result = drawInlineTokens({
             ctx,
             tokens: tokenizeMarkdown(meleeWeapons[i].ability, "regular"),
-            x: 450,
+            x: weaponAbilityCell.x,
             y: mTextPos + textOffset,
-            maxWidth: 200,
+            maxWidth: weaponAbilityCell.width,
             lineHeight: wpnAbilityLineHeight,
             fontSize: wpnFont,
             fontColor: "#000000",
             draw: true,
             alignment: "center",
+            breakLongTokens: true,
           });
           if (result.lineCount > 1) {
             currentWpnLineCount = checkLineCount(currentWpnLineCount, result.lineCount);
@@ -928,6 +994,15 @@ export const drawWeaponsOnCanvas = (
 
         // Finally, draw our image
         ctx.drawImage(image, wpnBannerPosX, wpnBannerPosY + imageOffset, width, height * currentWpnLineCount);
+        drawWeaponRowGuides(
+          ctx,
+          wpnBannerPosX,
+          wpnBannerPosY + imageOffset,
+          width,
+          height * currentWpnLineCount,
+          meleeWeaponColumnBoundaries,
+          weaponLineColor
+        );
 
         // If we have a battle damaged weapon, add battle damage icon
         if (meleeWeapons[i].isBattleDamaged) {
@@ -944,7 +1019,6 @@ export const drawWeaponsOnCanvas = (
         imageOffset = imageOffset + height * currentWpnLineCount;
         yAnchor += textOffset;
         lineCount += currentWpnLineCount;
-        tempLineCount = 0;
         currentWpnLineCount = 1;
       }
     }

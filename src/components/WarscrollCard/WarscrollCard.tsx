@@ -250,7 +250,8 @@ const WarscrollCard: React.FC = () => {
         932,
         keywordsFontSize,
         "center",
-        "#000000"
+        "#000000",
+        "bold"
       );
       characteristicsCtx.save();
       drawText(
@@ -260,7 +261,8 @@ const WarscrollCard: React.FC = () => {
         960,
         keywordsFontSize,
         "center",
-        "#000000"
+        "#000000",
+        "bold"
       );
       characteristicsCtx.save();
     }

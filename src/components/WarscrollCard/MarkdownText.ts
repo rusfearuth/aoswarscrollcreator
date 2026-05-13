@@ -24,6 +24,7 @@ export interface DrawInlineParams {
   alignment?: "left" | "center";
   prefix?: InlineToken[];
   wrapIndent?: number;
+  breakLongTokens?: boolean;
 }
 
 export interface DrawInlineResult {
@@ -98,17 +99,53 @@ const measureToken = (ctx: CanvasRenderingContext2D, token: InlineToken, fontSiz
   return ctx.measureText(token.text).width;
 };
 
+const splitTokenToFit = (
+  ctx: CanvasRenderingContext2D,
+  token: InlineToken,
+  maxWidth: number,
+  fontSize: number
+): InlineToken[] => {
+  if (token.isLineBreak || /^\s+$/.test(token.text) || measureToken(ctx, token, fontSize) <= maxWidth) {
+    return [token];
+  }
+
+  ctx.font = fontFor(token.style, fontSize);
+  const chunks: InlineToken[] = [];
+  let current = "";
+
+  for (const char of Array.from(token.text)) {
+    const next = current + char;
+    if (current.length > 0 && ctx.measureText(next).width > maxWidth) {
+      chunks.push({ text: current, style: token.style });
+      current = char;
+    } else {
+      current = next;
+    }
+  }
+
+  if (current.length > 0) {
+    chunks.push({ text: current, style: token.style });
+  }
+
+  return chunks.length > 0 ? chunks : [token];
+};
+
 const layoutLines = (
   ctx: CanvasRenderingContext2D,
   tokens: InlineToken[],
   maxWidth: number,
   fontSize: number,
-  wrapIndent: number
+  wrapIndent: number,
+  breakLongTokens: boolean
 ): InlineLine[] => {
   const lines: InlineLine[] = [];
   let currentTokens: InlineToken[] = [];
   let currentWidth = 0;
   let isFirstLine = true;
+  const longTokenMaxWidth = Math.max(1, maxWidth - wrapIndent);
+  const layoutTokens = breakLongTokens
+    ? tokens.flatMap((token) => splitTokenToFit(ctx, token, longTokenMaxWidth, fontSize))
+    : tokens;
 
   const currentLineAvailableWidth = () => (isFirstLine ? maxWidth : maxWidth - wrapIndent);
 
@@ -119,7 +156,7 @@ const layoutLines = (
     isFirstLine = false;
   };
 
-  for (const token of tokens) {
+  for (const token of layoutTokens) {
     if (token.isLineBreak) {
       pushLine();
       continue;
@@ -146,7 +183,7 @@ export const drawInlineTokens = (p: DrawInlineParams): DrawInlineResult => {
   const alignment = p.alignment ?? "left";
   const wrapIndent = p.wrapIndent ?? 0;
   const allTokens = p.prefix ? [...p.prefix, ...p.tokens] : p.tokens;
-  const lines = layoutLines(p.ctx, allTokens, p.maxWidth, p.fontSize, wrapIndent);
+  const lines = layoutLines(p.ctx, allTokens, p.maxWidth, p.fontSize, wrapIndent, p.breakLongTokens ?? false);
 
   if (p.draw) {
     p.ctx.globalAlpha = 1;
