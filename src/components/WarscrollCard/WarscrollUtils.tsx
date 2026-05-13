@@ -8,6 +8,7 @@ import { CustomizationState } from "../Customization/CustomizationSlice";
 
 // Font sizes
 const factionTitleFontSize = 12;
+const warscrollSubtypeFontSize = 14;
 const warscrollNameFontSize = 28;
 const abilitiesKeywordsFont = 12;
 const abilityTypeFontSize = 16;
@@ -491,7 +492,7 @@ const drawWeaponCellText = (
 ): number => {
   const result = drawInlineTokens({
     ctx,
-    tokens: tokenizeMarkdown(text, "regular"),
+    tokens: tokenizeMarkdown(text, "bold"),
     x,
     y,
     maxWidth,
@@ -685,7 +686,8 @@ export const drawWeaponsOnCanvas = (
                     textPosY + textOffset,
                     wpnFont,
                     "center",
-                    "#000000"
+                    "#000000",
+                    "bold"
                   );
                 }
 
@@ -700,10 +702,10 @@ export const drawWeaponsOnCanvas = (
               }
               if (firstIndex === lastIndex) {
                 // If there is only one value
-                drawText(ctx, "*", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000");
+                drawText(ctx, "*", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
               } else if (lastIndex - firstIndex === 1) {
                 // If there are only two true values.
-                drawText(ctx, "See Below", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000");
+                drawText(ctx, "See Below", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
               } else {
                 // Draw left path
                 drawLine(
@@ -720,7 +722,7 @@ export const drawWeaponsOnCanvas = (
                   drawTextLeft - 10,
                   textPosY + textOffset - 2
                 );
-                drawText(ctx, "See Below", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000");
+                drawText(ctx, "See Below", drawTextCenter, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
                 // Draw right path
                 drawLine(
                   ctx,
@@ -741,12 +743,12 @@ export const drawWeaponsOnCanvas = (
           }
         } else {
           // If not override, draw weapons normally.
-          drawText(ctx, rangedWeapons[i].range + '"', rng, textPosY + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, rangedWeapons[i].atk, atk, textPosY + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, rangedWeapons[i].toHit, hit, textPosY + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, rangedWeapons[i].toWound, wnd, textPosY + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, rangedWeapons[i].rend, rnd, textPosY + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, rangedWeapons[i].damage, dmg, textPosY + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, rangedWeapons[i].range + '"', rng, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, rangedWeapons[i].atk, atk, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, rangedWeapons[i].toHit, hit, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, rangedWeapons[i].toWound, wnd, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, rangedWeapons[i].rend, rnd, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, rangedWeapons[i].damage, dmg, textPosY + textOffset, wpnFont, "center", "#000000", "bold");
         }
 
         if (rangedWeapons[i].ability.length === 0) {
@@ -754,7 +756,7 @@ export const drawWeaponsOnCanvas = (
         } else {
           const result = drawInlineTokens({
             ctx,
-            tokens: tokenizeMarkdown(rangedWeapons[i].ability, "regular"),
+            tokens: tokenizeMarkdown(rangedWeapons[i].ability, "bold"),
             x: weaponAbilityCell.x,
             y: textPosY + textOffset,
             maxWidth: weaponAbilityCell.width,
@@ -901,7 +903,8 @@ export const drawWeaponsOnCanvas = (
                     mTextPos + textOffset,
                     wpnFont,
                     "center",
-                    "#000000"
+                    "#000000",
+                    "bold"
                   );
                 }
 
@@ -916,10 +919,10 @@ export const drawWeaponsOnCanvas = (
               }
               if (firstIndex === lastIndex) {
                 // If there is only one value
-                drawText(ctx, "*", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000");
+                drawText(ctx, "*", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000", "bold");
               } else if (lastIndex - firstIndex === 1) {
                 // If there are only two true values.
-                drawText(ctx, "See Below", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000");
+                drawText(ctx, "See Below", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000", "bold");
               } else {
                 // Draw left path
                 drawLine(
@@ -936,7 +939,7 @@ export const drawWeaponsOnCanvas = (
                   drawTextLeft - 10,
                   mTextPos + textOffset - 2
                 );
-                drawText(ctx, "See Below", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000");
+                drawText(ctx, "See Below", drawTextCenter, mTextPos + textOffset, wpnFont, "center", "#000000", "bold");
                 // Draw right path
                 drawLine(
                   ctx,
@@ -957,11 +960,11 @@ export const drawWeaponsOnCanvas = (
           }
         } else {
           // If not override, draw weapons normally.
-          drawText(ctx, meleeWeapons[i].atk, atk, mTextPos + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, meleeWeapons[i].toHit, hit, mTextPos + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, meleeWeapons[i].toWound, wnd, mTextPos + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, meleeWeapons[i].rend, rnd, mTextPos + textOffset, wpnFont, "center", "#000000");
-          drawText(ctx, meleeWeapons[i].damage, dmg, mTextPos + textOffset, wpnFont, "center", "#000000");
+          drawText(ctx, meleeWeapons[i].atk, atk, mTextPos + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, meleeWeapons[i].toHit, hit, mTextPos + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, meleeWeapons[i].toWound, wnd, mTextPos + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, meleeWeapons[i].rend, rnd, mTextPos + textOffset, wpnFont, "center", "#000000", "bold");
+          drawText(ctx, meleeWeapons[i].damage, dmg, mTextPos + textOffset, wpnFont, "center", "#000000", "bold");
         }
 
         if (meleeWeapons[i].ability.length === 0) {
@@ -969,7 +972,7 @@ export const drawWeaponsOnCanvas = (
         } else {
           const result = drawInlineTokens({
             ctx,
-            tokens: tokenizeMarkdown(meleeWeapons[i].ability, "regular"),
+            tokens: tokenizeMarkdown(meleeWeapons[i].ability, "bold"),
             x: weaponAbilityCell.x,
             y: mTextPos + textOffset,
             maxWidth: weaponAbilityCell.width,
@@ -1079,7 +1082,7 @@ export const drawWarscrollTitleTextOnCanvas = (
       ctx.fillText(line, x, y + 20);
       ctx.font = factionTitleFontSize.toString() + "px Minion Pro Bold";
       ctx.fillText(factionText, x, y - 35 - doubleSpaceOffset);
-      ctx.font = factionTitleFontSize.toString() + "px Minion Pro Bold";
+      ctx.font = warscrollSubtypeFontSize.toString() + "px Minion Pro Bold";
       ctx.fillText(subtitle, x, y + 30 + doubleSpaceOffset);
     } else {
       // Essentially if someone is using the app normally, do this.
@@ -1097,13 +1100,14 @@ export const drawWarscrollTitleTextOnCanvas = (
       // Now that we've drawn the first line, draw the entirety of the second
       ctx.font = warscrollNameFontSize.toString() + "px Minion Pro";
       ctx.fillText(line, x, y + 20);
-      ctx.font = factionTitleFontSize.toString() + "px Minion Pro Bold";
+      ctx.font = warscrollSubtypeFontSize.toString() + "px Minion Pro Bold";
       ctx.fillText(subtitle, x, y + 30 + doubleSpaceOffset);
     }
   } else {
     ctx.fillText(warscrollName, x, y);
-    ctx.font = factionTitleFontSize.toString() + "px Minion Pro Bold";
+    ctx.font = warscrollSubtypeFontSize.toString() + "px Minion Pro Bold";
     ctx.fillText(subtitle, x, y + 20);
+    ctx.font = factionTitleFontSize.toString() + "px Minion Pro Bold";
     ctx.fillText(factionText, x, y - 35);
   }
 };
