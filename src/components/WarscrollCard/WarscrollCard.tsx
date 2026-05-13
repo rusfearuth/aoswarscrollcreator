@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Container, Box, useMediaQuery, Theme } from "@mui/material";
 import { useSelector, useDispatch } from "react-redux";
+import { jsPDF } from "jspdf";
 import { RootState } from "../../store/store";
 import { resetDownload } from "./WarscrollCardSlice";
 import { setModelImagePosition } from "../ModelImage/ModelImageSlice";
@@ -32,7 +33,7 @@ const WarscrollCard: React.FC = () => {
   const weaponBannerImageRef = useRef<HTMLImageElement>(new Image());
   const dispatch = useDispatch();
 
-  const triggerDownload = useSelector((state: RootState) => state.warscroll.triggerDownload);
+  const downloadFormat = useSelector((state: RootState) => state.warscroll.downloadFormat);
 
   const factionTemplate = useSelector((state: RootState) => state.faction.factionTemplate);
   const factionWeaponBanner = useSelector((state: RootState) => state.faction.factionWeaponBanner);
@@ -126,14 +127,13 @@ const WarscrollCard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (triggerDownload) {
+    if (downloadFormat) {
       const backgroundCanvas = backgroundCanvasRef.current;
       const modelImageCanvas = modelImageCanvasRef.current;
       const characteristicsCanvas = characteristicsCanvasRef.current;
       const bodyCanvas = bodyCanvasRef.current;
 
       if (backgroundCanvas && modelImageCanvas && characteristicsCanvas && bodyCanvas) {
-        const link = document.createElement("a");
         const backgroundCtx = backgroundCanvas.getContext("2d");
         const modelImageCtx = modelImageCanvas.getContext("2d");
         const characteristicsCtx = characteristicsCanvas.getContext("2d");
@@ -149,14 +149,29 @@ const WarscrollCard: React.FC = () => {
           combinedCtx.drawImage(modelImageCanvas, 0, 0);
           combinedCtx.drawImage(characteristicsCanvas, 0, 0);
           combinedCtx.drawImage(bodyCanvas, 0, 0);
-          link.href = combinedCanvas.toDataURL("image/png");
-          link.download = warscrollName + "_Warscroll.png";
-          link.click();
+
+          if (downloadFormat === "png") {
+            const link = document.createElement("a");
+            link.href = combinedCanvas.toDataURL("image/png");
+            link.download = warscrollName + "_Warscroll.png";
+            link.click();
+          } else if (downloadFormat === "pdf-a6") {
+            const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a6" });
+            const pageW = 105;
+            const pageH = 148;
+            const canvasAspect = combinedCanvas.width / combinedCanvas.height;
+            const imgH = pageH;
+            const imgW = imgH * canvasAspect;
+            const x = (pageW - imgW) / 2;
+            const y = 0;
+            pdf.addImage(combinedCanvas.toDataURL("image/png"), "PNG", x, y, imgW, imgH);
+            pdf.save(warscrollName + "_Warscroll.pdf");
+          }
         }
       }
       dispatch(resetDownload());
     }
-  }, [triggerDownload, dispatch, warscrollName]);
+  }, [downloadFormat, dispatch, warscrollName]);
 
   useEffect(() => {
     const backgroundCanvas = backgroundCanvasRef.current;
